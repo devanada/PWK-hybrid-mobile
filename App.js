@@ -1,13 +1,8 @@
 import React, { Component } from "react";
-import { Dimensions, Text, View } from "react-native";
-import MapView, {
-  Callout,
-  Marker,
-  Polygon,
-  Geojson,
-  Alert,
-} from "react-native-maps";
+import { Dimensions, Text, View, Alert, ActivityIndicator } from "react-native";
+import MapView, { Callout, Marker, Polygon, Geojson } from "react-native-maps";
 import TestingGeoJson from "./TestingGeoJson";
+import * as Location from "expo-location";
 
 const { width, height } = Dimensions.get("window");
 
@@ -27,17 +22,10 @@ const myPlace = {
   ],
 };
 
-export default class App extends Component {
-  constructor() {
-    super();
-
+export default class App extends React.Component {
+  constructor(props) {
+    super(props);
     this.state = {
-      region: {
-        latitude: 24.80855120296181,
-        longitude: 67.03557014465332,
-        latitudeDelta: 0.5,
-        longitudeDelta: 0.5 * (width / height),
-      },
       polygons: [
         {
           coordinates: [
@@ -71,10 +59,20 @@ export default class App extends Component {
         },
       ],
       testState: TestingGeoJson.testingJson,
+      region1: {},
+      region2: {},
+      region3: {
+        latitude: -7.9607117,
+        longitude: 112.7187521,
+      },
+      loadingMaps: false,
+      mapsLoaded: false,
     };
   }
 
   async componentDidMount() {
+    this.setState({ loadingMaps: true });
+    await this.getlocation();
     await this.fetchJson();
   }
 
@@ -98,6 +96,26 @@ export default class App extends Component {
       });
   }
 
+  async getlocation() {
+    let location = await Location.getCurrentPositionAsync({});
+    var region1 = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+      latitudeDelta: 0.001,
+      longitudeDelta: 0.001,
+    };
+    var region2 = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+    await this.setState({
+      loadingMaps: false,
+      region1,
+      region2,
+      mapsLoaded: true,
+    });
+  }
+
   toggle(polygon) {
     console.log("onPress", polygon.open);
 
@@ -113,32 +131,32 @@ export default class App extends Component {
   render() {
     return (
       <View style={styles.container}>
-        <MapView style={styles.map} initialRegion={this.state.region}>
-          {this.state.polygons.map((polygon, index) => (
-            <View key={index}>
-              <Polygon
-                coordinates={polygon.coordinates}
-                fillColor={polygon.color}
-                tappable={true}
-                onPress={() => this.toggle(polygon)}
-              />
-              <Marker
-                ref={(ref) => (polygon.marker = ref)}
-                coordinate={polygon.coordinates[0]}
-              >
-                <Callout>
-                  <Text>Hello!</Text>
-                </Callout>
-              </Marker>
-            </View>
-          ))}
-          <Geojson
-            geojson={this.state.testState}
-            strokeColor="red"
-            fillColor="green"
-            strokeWidth={2}
+        {this.state.loadingMaps && (
+          <ActivityIndicator
+            style={{
+              flex: 1,
+              alignSelf: "center",
+            }}
+            animating={this.state.loadingMaps}
+            size="large"
+            color="#32E0C4"
           />
-        </MapView>
+        )}
+        {this.state.mapsLoaded && (
+          <MapView
+            style={styles.map}
+            initialRegion={this.state.region1}
+            mapType="standard"
+            showsUserLocation={true}
+          >
+            <Geojson
+              geojson={this.state.testState}
+              strokeColor="red"
+              fillColor="green"
+              strokeWidth={2}
+            />
+          </MapView>
+        )}
       </View>
     );
   }
